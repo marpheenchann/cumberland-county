@@ -1,34 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cumberland County Budget Explorer</title>
-<meta name="description" content="Interactive visualization of Cumberland County, Maine budget data from official county documents. CY 2020–2022 & FY 2023–2027.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=Source+Serif+4:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #f7f1e3; font-family: 'Libre Franklin', 'Helvetica Neue', sans-serif; }
-  #root { min-height: 100vh; }
-</style>
-</head>
-<body>
-<div id="root"></div>
-
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/react-is@18/umd/react-is.production.min.js"></script>
-<script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
-<script src="https://unpkg.com/recharts@2/umd/Recharts.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-<script type="text/babel">
-const { useState, useEffect, useRef } = React;
-const {
+import { useState, useEffect, useRef } from "react";
+import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, AreaChart, Area, Legend, LineChart, Line
-} = Recharts;
+} from "recharts";
 
 // ═══════════════════════════════════════════════════════════════════════
 // CUMBERLAND COUNTY BUDGET DATA — ALL FROM OFFICIAL BUDGET DOCUMENTS
@@ -104,14 +78,36 @@ const TAX_IMPACT = {
   totalIncrease: { dollars: 5800164, percent: 13.77 },
 };
 
+// ═══════════════════════════════════════════════════════════════════════
+// CAMPAIGN COLORS
+// ═══════════════════════════════════════════════════════════════════════
+
 const P = {
-  red: "#c44840", redDark: "#a33a33", redLight: "#d4716b", redBg: "#c4484010",
-  cream: "#f7f1e3", creamDark: "#ece4d1", white: "#ffffff",
-  text: "#2d2926", textMed: "#5a524b", textMuted: "#8a817a", textLight: "#b5aea6",
-  border: "#e5ded2", borderLight: "#efe9dc",
-  jail: "#c44840", county: "#3a7ca5", arena: "#d4a03c",
-  justice: "#c44840", operations: "#3a7ca5", admin: "#5a8a6a", records: "#d4a03c",
-  safety: "#7a6498", services: "#5a8a6a", danger: "#c44840", success: "#5a8a6a",
+  red: "#c44840",       // primary accent
+  redDark: "#a33a33",   // darker red for hover/emphasis
+  redLight: "#d4716b",  // lighter red
+  redBg: "#c4484010",   // very faint red background
+  cream: "#f7f1e3",     // warm cream background
+  creamDark: "#ece4d1", // darker cream for borders/hover
+  white: "#ffffff",      // card backgrounds
+  text: "#2d2926",       // near-black warm text
+  textMed: "#5a524b",    // medium text
+  textMuted: "#8a817a",  // muted text
+  textLight: "#b5aea6",  // very light text
+  border: "#e5ded2",     // warm border
+  borderLight: "#efe9dc",
+  // chart palette — red-forward with complementary warm tones
+  jail: "#c44840",
+  county: "#3a7ca5",     // steel blue
+  arena: "#d4a03c",      // warm amber
+  justice: "#c44840",
+  operations: "#3a7ca5",
+  admin: "#5a8a6a",      // muted sage
+  records: "#d4a03c",
+  safety: "#7a6498",     // muted purple
+  services: "#5a8a6a",
+  danger: "#c44840",
+  success: "#5a8a6a",
 };
 
 const fmt = (n) => {
@@ -162,6 +158,7 @@ function Tip({ active, payload, label }) {
   );
 }
 
+// ── TAB 1: BREAKDOWN ──
 function BreakdownTab({ year }) {
   const [hov, setHov] = useState(null);
   const d = DIVISIONS[year], cm = COMBINED[year];
@@ -229,7 +226,7 @@ function BreakdownTab({ year }) {
       </div>
 
       {isFY && deptData ? (
-        <React.Fragment>
+        <>
           <h3 style={{ fontSize: 15, color: P.text, fontFamily: "'Source Serif 4', Georgia, serif", marginBottom: 12 }}>County Government Departments</h3>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -258,7 +255,7 @@ function BreakdownTab({ year }) {
               </tbody>
             </table>
           </div>
-        </React.Fragment>
+        </>
       ) : (
         <div style={{ padding: 16, background: P.white, borderRadius: 10, fontSize: 13, color: P.textMuted, textAlign: "center", border: `1px solid ${P.border}` }}>
           Department-level detail is available for fiscal year budgets (FY 23-24 onward). Calendar year budgets show division-level totals only.
@@ -268,6 +265,7 @@ function BreakdownTab({ year }) {
   );
 }
 
+// ── TAB 2: YEAR-OVER-YEAR ──
 function ComparisonTab() {
   const barData = ALL_YEARS.map(yr => ({
     name: yr.replace("CY ", "'").replace("FY ", ""), County: DIVISIONS[yr].county, Jail: DIVISIONS[yr].jail, Arena: DIVISIONS[yr].arena,
@@ -351,21 +349,25 @@ function ComparisonTab() {
   );
 }
 
+// ── TAB 3: TRENDS ──
 function TrendsTab() {
   const getVal = (dept, yr) => {
     const k = yr === "FY 23-24" ? "fy2324" : yr === "FY 24-25" ? "fy2425" : yr === "FY 25-26" ? "fy2526" : "fy2627";
     const d = DEPARTMENTS.find(x => x.short === dept);
     return d ? (d[k] || 0) : 0;
   };
+
   const trendAll = ALL_YEARS.map(yr => ({
     name: yr.replace("CY ", "'").replace("FY ", ""),
     Jail: DIVISIONS[yr].jail, County: DIVISIONS[yr].county, "Tax Required": COMBINED[yr].taxRequired,
   }));
+
   const trendDept = FISCAL_YEARS.map(yr => ({
     name: yr, Jail: DIVISIONS[yr].jail,
     "Sheriff (All)": getVal("Sheriff LE", yr) + getVal("Sheriff Admin", yr) + getVal("Civil", yr),
     Communications: getVal("Comms", yr), Facilities: getVal("Facilities", yr),
   }));
+
   const shareData = ALL_YEARS.map(yr => ({
     name: yr.replace("CY ", "'").replace("FY ", ""),
     "Jail %": parseFloat(((DIVISIONS[yr].jail / COMBINED[yr].expenditures) * 100).toFixed(1)),
@@ -374,7 +376,7 @@ function TrendsTab() {
 
   return (
     <div>
-      <h3 style={{ fontSize: 15, color: P.text, fontFamily: "'Source Serif 4', Georgia, serif", marginBottom: 12 }}>Total Budget Growth (CY 2020 {"\u2013"} FY 26-27)</h3>
+      <h3 style={{ fontSize: 15, color: P.text, fontFamily: "'Source Serif 4', Georgia, serif", marginBottom: 12 }}>Total Budget Growth (CY 2020 \u2013 FY 26-27)</h3>
       <ResponsiveContainer width="100%" height={280}>
         <AreaChart data={trendAll}>
           <defs>
@@ -439,7 +441,7 @@ function TrendsTab() {
             return (
               <div key={i} style={{ fontSize: 12, color: P.text }}>
                 <span style={{ color: P.textMuted }}>{s.label}:</span>{" "}
-                {fmt(s.from)} {"\u2192"} {fmt(s.to)}{" "}
+                {fmt(s.from)} \u2192 {fmt(s.to)}{" "}
                 <span style={{ color: P.red, fontWeight: 600 }}>+{growth}%</span>
               </div>
             );
@@ -450,6 +452,7 @@ function TrendsTab() {
   );
 }
 
+// ── TAB 4: REVENUE ──
 function RevenueTab() {
   const revBreak = [
     { name: "Municipal Tax Assessment", "FY 25-26": 42119604, "FY 26-27": 47919768, color: P.red },
@@ -462,9 +465,11 @@ function RevenueTab() {
     { name: "Other Revenue", "FY 25-26": 662120, "FY 26-27": 671900, color: P.textLight },
   ];
   const pie = revBreak.map(r => ({ name: r.name, value: r["FY 26-27"], color: r.color }));
+
   const jailRevYears = ["CY 2020", "CY 2021", "CY 2022", "FY 23-24", "FY 24-25", "FY 25-26", "FY 26-27"];
   const jailRevData = jailRevYears.map(yr => ({
-    name: yr.replace("CY ", "'").replace("FY ", ""), Total: JAIL_REV[yr]?.total || 0,
+    name: yr.replace("CY ", "'").replace("FY ", ""),
+    Total: JAIL_REV[yr]?.total || 0,
   }));
 
   return (
@@ -545,6 +550,7 @@ function RevenueTab() {
   );
 }
 
+// ── TAB 5: JAIL SPOTLIGHT ──
 function JailSpotlight() {
   const jailBudData = FISCAL_YEARS.map(yr => ({
     name: yr, Personnel: JAIL[yr].personnel, Operations: JAIL[yr].operations, Capital: JAIL[yr].capital,
@@ -639,15 +645,19 @@ function JailSpotlight() {
       <div style={{ padding: "18px 22px", background: P.white, border: `1px solid ${P.border}`, borderRadius: 14, borderLeft: `4px solid ${P.red}` }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: P.red, marginBottom: 8, fontFamily: "'Source Serif 4', Georgia, serif" }}>What This Means for Cumberland County Taxpayers</div>
         <div style={{ fontSize: 13, color: P.text, lineHeight: 1.7 }}>
-          The jail is the single largest driver of property tax increases. Of the proposed 13.77% tax increase, <strong style={{ color: P.red }}>the jail alone accounts for 10.04 percentage points</strong> {"\u2014"} nearly three-quarters of the total increase. Meanwhile, federal detention revenue from ICE and US Marshal contracts drops to zero, creating a $1.8 million hole that falls directly on local taxpayers.
+          The jail is the single largest driver of property tax increases. Of the proposed 13.77% tax increase, <strong style={{ color: P.red }}>the jail alone accounts for 10.04 percentage points</strong> \u2014 nearly three-quarters of the total increase. Meanwhile, federal detention revenue from ICE and US Marshal contracts drops to zero, creating a $1.8 million hole that falls directly on local taxpayers.
         </div>
         <div style={{ fontSize: 13, color: P.text, lineHeight: 1.7, marginTop: 10 }}>
-          At $25.4 million, the jail consumes more than all other county departments combined. The inmate medical contract alone ($4.4M) exceeds the entire budgets of Emergency Management, Public Health, Registry of Deeds, and Registry of Probate {"\u2014"} combined. Since CY 2020, the total county budget has grown 29% from $46.6M to $60.2M, with jail costs driving much of that increase.
+          At $25.4 million, the jail consumes more than all other county departments combined. The inmate medical contract alone ($4.4M) exceeds the entire budgets of Emergency Management, Public Health, Registry of Deeds, and Registry of Probate \u2014 combined. Since CY 2020, the total county budget has grown 29% from $46.6M to $60.2M, with jail costs driving much of that increase.
         </div>
       </div>
     </div>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// MAIN
+// ═══════════════════════════════════════════════════════════════════════
 
 const TABS = [
   { id: "breakdown", label: "Budget Breakdown" },
@@ -657,23 +667,29 @@ const TABS = [
   { id: "jail", label: "Jail Spotlight" },
 ];
 
-function BudgetExplorer() {
+export default function BudgetExplorer() {
   const [tab, setTab] = useState("breakdown");
   const [year, setYear] = useState("FY 26-27");
 
   return (
-    <div style={{ minHeight: "100vh", background: P.cream, color: P.text, fontFamily: "'Libre Franklin', 'Helvetica Neue', sans-serif" }}>
-      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "32px 24px" }}>
+    <div style={{
+      minHeight: "100vh",
+      background: P.cream,
+      color: P.text, fontFamily: "'Libre Franklin', 'Helvetica Neue', sans-serif", position: "relative",
+    }}>
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 1080, margin: "0 auto", padding: "32px 24px" }}>
+        {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 3, color: P.redDark, marginBottom: 8, fontWeight: 600 }}>Cumberland County, Maine</div>
           <h1 style={{ fontSize: 34, fontWeight: 700, color: P.red, fontFamily: "'Source Serif 4', Georgia, serif", margin: 0, lineHeight: 1.2 }}>
             Interactive Budget Explorer
           </h1>
           <p style={{ fontSize: 14, color: P.textMuted, marginTop: 8, maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
-            Calendar Years 2020{"\u2013"}2022 & Fiscal Years 2023{"\u2013"}2027 {"\u00B7"} Official County Budget Documents
+            Calendar Years 2020\u20132022 & Fiscal Years 2023\u20132027 \u00B7 Official County Budget Documents
           </p>
         </div>
 
+        {/* Year selector */}
         {tab === "breakdown" && (
           <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 24, flexWrap: "wrap" }}>
             {ALL_YEARS.map(yr => (
@@ -692,6 +708,7 @@ function BudgetExplorer() {
           </div>
         )}
 
+        {/* Tab nav */}
         <div style={{ display: "flex", gap: 4, marginBottom: 24, overflowX: "auto", paddingBottom: 2 }}>
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
@@ -707,8 +724,10 @@ function BudgetExplorer() {
           ))}
         </div>
 
+        {/* Content */}
         <div style={{
-          background: P.white, border: `1px solid ${P.border}`, borderRadius: 16, padding: "28px 28px",
+          background: P.white,
+          border: `1px solid ${P.border}`, borderRadius: 16, padding: "28px 28px",
           boxShadow: "0 4px 20px rgba(45,41,38,0.06)",
         }}>
           {tab === "breakdown" && <BreakdownTab year={year} />}
@@ -718,19 +737,15 @@ function BudgetExplorer() {
           {tab === "jail" && <JailSpotlight />}
         </div>
 
+        {/* Footer */}
         <div style={{ textAlign: "center", marginTop: 28, paddingTop: 20, borderTop: `1px solid ${P.border}` }}>
           <div style={{ fontSize: 11, color: P.textLight, lineHeight: 1.6, maxWidth: 720, margin: "0 auto" }}>
             Data sourced from official Cumberland County budget documents: CY 2020-2022 Annual Budgets and FY 2023-24 through FY 2026-27 Budget Books.
             The county transitioned from calendar year to fiscal year (July-June) budgeting in 2023, with a 6-month transition period omitted above.
-            FY 26-27 figures reflect the County Manager's Recommendation {"\u2014"} the Finance Committee and Commissioners have not yet voted on a final budget.
+            FY 26-27 figures reflect the County Manager's Recommendation \u2014 the Finance Committee and Commissioners have not yet voted on a final budget.
           </div>
         </div>
       </div>
     </div>
   );
 }
-
-ReactDOM.render(<BudgetExplorer />, document.getElementById("root"));
-</script>
-</body>
-</html>
