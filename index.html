@@ -1,751 +1,236 @@
-import { useState, useEffect, useRef } from "react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cumberland County Budget Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=Source+Serif+4:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f7f1e3; font-family: 'Libre Franklin', 'Helvetica Neue', sans-serif; }
+  #root { min-height: 100vh; }
+  #loading { display:flex; align-items:center; justify-content:center; min-height:100vh; color:#c44840; font-family:'Source Serif 4',Georgia,serif; font-size:18px; }
+</style>
+</head>
+<body>
+<div id="root"><div id="loading">Loading Budget Explorer...</div></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react/": "https://esm.sh/react@18.2.0/",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/": "https://esm.sh/react-dom@18.2.0/",
+    "recharts": "https://esm.sh/recharts@2.12.7?deps=react@18.2.0,react-dom@18.2.0"
+  }
+}
+</script>
+
+<script type="module">
+import React from "react";
+import { createRoot } from "react-dom/client";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, AreaChart, Area, Legend, LineChart, Line
 } from "recharts";
 
-// ═══════════════════════════════════════════════════════════════════════
-// CUMBERLAND COUNTY BUDGET DATA — ALL FROM OFFICIAL BUDGET DOCUMENTS
-// ═══════════════════════════════════════════════════════════════════════
+const h = React.createElement;
+const { useState, useEffect, useRef, Fragment } = React;
 
-const ALL_YEARS = ["CY 2020", "CY 2021", "CY 2022", "FY 23-24", "FY 24-25", "FY 25-26", "FY 26-27"];
-const FISCAL_YEARS = ["FY 23-24", "FY 24-25", "FY 25-26", "FY 26-27"];
-
-const YEAR_LABELS = {
-  "CY 2020": "CY 2020 (Jan-Dec)", "CY 2021": "CY 2021 (Jan-Dec)", "CY 2022": "CY 2022 (Jan-Dec)",
-  "FY 23-24": "FY 23-24 (Jul-Jun)", "FY 24-25": "FY 24-25", "FY 25-26": "FY 25-26 (Adopted)", "FY 26-27": "FY 26-27 (Mgr Rec)",
-};
+const ALL_YEARS = ["CY 2020","CY 2021","CY 2022","FY 23-24","FY 24-25","FY 25-26","FY 26-27"];
+const FISCAL_YEARS = ["FY 23-24","FY 24-25","FY 25-26","FY 26-27"];
+const YEAR_LABELS = {"CY 2020":"CY 2020 (Jan-Dec)","CY 2021":"CY 2021 (Jan-Dec)","CY 2022":"CY 2022 (Jan-Dec)","FY 23-24":"FY 23-24 (Jul-Jun)","FY 24-25":"FY 24-25","FY 25-26":"FY 25-26 (Adopted)","FY 26-27":"FY 26-27 (Mgr Rec)"};
 
 const COMBINED = {
-  "CY 2020": { expenditures: 46571931, revenues: 12929012, taxStabilization: 0, taxRequired: 33642919 },
-  "CY 2021": { expenditures: 47151594, revenues: 12886408, taxStabilization: 200000, taxRequired: 34065186 },
-  "CY 2022": { expenditures: 48760713, revenues: 13175573, taxStabilization: 200000, taxRequired: 35385140 },
-  "FY 23-24": { expenditures: 51474726, revenues: 14006967, taxStabilization: 0, taxRequired: 37267759 },
-  "FY 24-25": { expenditures: 51350607, revenues: 12058664, taxStabilization: 200000, taxRequired: 39091943 },
-  "FY 25-26": { expenditures: 55713429, revenues: 13393825, taxStabilization: 200000, taxRequired: 42119604 },
-  "FY 26-27": { expenditures: 60173343, revenues: 12053575, taxStabilization: 200000, taxRequired: 47919768 },
+  "CY 2020":{expenditures:46571931,revenues:12929012,taxRequired:33642919},
+  "CY 2021":{expenditures:47151594,revenues:12886408,taxRequired:34065186},
+  "CY 2022":{expenditures:48760713,revenues:13175573,taxRequired:35385140},
+  "FY 23-24":{expenditures:51474726,revenues:14006967,taxRequired:37267759},
+  "FY 24-25":{expenditures:51350607,revenues:12058664,taxRequired:39091943},
+  "FY 25-26":{expenditures:55713429,revenues:13393825,taxRequired:42119604},
+  "FY 26-27":{expenditures:60173343,revenues:12053575,taxRequired:47919768},
 };
-
 const DIVISIONS = {
-  "CY 2020": { county: 23050598, jail: 20033137, arena: 3488196 },
-  "CY 2021": { county: 23141937, jail: 20579182, arena: 3430475 },
-  "CY 2022": { county: 24092634, jail: 21517069, arena: 3151010 },
-  "FY 23-24": { county: 25770118, jail: 22405905, arena: 3298703 },
-  "FY 24-25": { county: 27272952, jail: 20869148, arena: 3208507 },
-  "FY 25-26": { county: 29510180, jail: 23049033, arena: 3154216 },
-  "FY 26-27": { county: 32014363, jail: 25444423, arena: 2714557 },
+  "CY 2020":{county:23050598,jail:20033137,arena:3488196},
+  "CY 2021":{county:23141937,jail:20579182,arena:3430475},
+  "CY 2022":{county:24092634,jail:21517069,arena:3151010},
+  "FY 23-24":{county:25770118,jail:22405905,arena:3298703},
+  "FY 24-25":{county:27272952,jail:20869148,arena:3208507},
+  "FY 25-26":{county:29510180,jail:23049033,arena:3154216},
+  "FY 26-27":{county:32014363,jail:25444423,arena:2714557},
 };
-
 const DEPARTMENTS = [
-  { name: "Sheriff \u2014 Law Enforcement", short: "Sheriff LE", fy2324: 6060575, fy2425: 6686655, fy2526: 7824255, fy2627: 8214084, category: "justice" },
-  { name: "Communications (CCRCC)", short: "Comms", fy2324: 3448082, fy2425: 3722139, fy2526: 4027791, fy2627: 4617197, category: "operations" },
-  { name: "Facilities", short: "Facilities", fy2324: 2610649, fy2425: 2618848, fy2526: 3001848, fy2627: 2970233, category: "operations" },
-  { name: "District Attorney", short: "DA", fy2324: 1974969, fy2425: 2263633, fy2526: 2699061, fy2627: 2855373, category: "justice" },
-  { name: "Sheriff \u2014 Admin", short: "Sheriff Admin", fy2324: 1307767, fy2425: 1503782, fy2526: 1692343, fy2627: 1930797, category: "justice" },
-  { name: "Information Technology", short: "IT", fy2324: 1014799, fy2425: 1057613, fy2526: 1281030, fy2627: 1490463, category: "operations" },
-  { name: "Executive Admin", short: "Exec", fy2324: 798964, fy2425: 856817, fy2526: 1043992, fy2627: 1226283, category: "admin" },
-  { name: "Human Resources", short: "HR", fy2324: 565576, fy2425: 743088, fy2526: 988723, fy2627: 1043813, category: "admin" },
-  { name: "Registry of Probate", short: "Probate", fy2324: 578503, fy2425: 893393, fy2526: 984942, fy2627: 1008084, category: "records" },
-  { name: "Registry of Deeds", short: "Deeds", fy2324: 704120, fy2425: 725277, fy2526: 858238, fy2627: 909037, category: "records" },
-  { name: "Finance", short: "Finance", fy2324: null, fy2425: 756161, fy2526: 715998, fy2627: 863825, category: "admin" },
-  { name: "Emergency Management", short: "EMA", fy2324: 639678, fy2425: 651665, fy2526: 703258, fy2627: 733576, category: "safety" },
-  { name: "Sheriff \u2014 Civil Process", short: "Civil", fy2324: 335545, fy2425: 388954, fy2526: 514187, fy2627: 562290, category: "justice" },
-  { name: "Regional Public Health", short: "Health", fy2324: null, fy2425: null, fy2526: 323452, fy2627: 365026, category: "services" },
-  { name: "Facilities \u2014 Garage", short: "Garage", fy2324: 244616, fy2425: 129379, fy2526: 140534, fy2627: 146698, category: "operations" },
+  {name:"Sheriff \u2014 Law Enforcement",short:"Sheriff LE",fy2324:6060575,fy2425:6686655,fy2526:7824255,fy2627:8214084,category:"justice"},
+  {name:"Communications (CCRCC)",short:"Comms",fy2324:3448082,fy2425:3722139,fy2526:4027791,fy2627:4617197,category:"operations"},
+  {name:"Facilities",short:"Facilities",fy2324:2610649,fy2425:2618848,fy2526:3001848,fy2627:2970233,category:"operations"},
+  {name:"District Attorney",short:"DA",fy2324:1974969,fy2425:2263633,fy2526:2699061,fy2627:2855373,category:"justice"},
+  {name:"Sheriff \u2014 Admin",short:"Sheriff Admin",fy2324:1307767,fy2425:1503782,fy2526:1692343,fy2627:1930797,category:"justice"},
+  {name:"Information Technology",short:"IT",fy2324:1014799,fy2425:1057613,fy2526:1281030,fy2627:1490463,category:"operations"},
+  {name:"Executive Admin",short:"Exec",fy2324:798964,fy2425:856817,fy2526:1043992,fy2627:1226283,category:"admin"},
+  {name:"Human Resources",short:"HR",fy2324:565576,fy2425:743088,fy2526:988723,fy2627:1043813,category:"admin"},
+  {name:"Registry of Probate",short:"Probate",fy2324:578503,fy2425:893393,fy2526:984942,fy2627:1008084,category:"records"},
+  {name:"Registry of Deeds",short:"Deeds",fy2324:704120,fy2425:725277,fy2526:858238,fy2627:909037,category:"records"},
+  {name:"Finance",short:"Finance",fy2324:null,fy2425:756161,fy2526:715998,fy2627:863825,category:"admin"},
+  {name:"Emergency Management",short:"EMA",fy2324:639678,fy2425:651665,fy2526:703258,fy2627:733576,category:"safety"},
+  {name:"Sheriff \u2014 Civil Process",short:"Civil",fy2324:335545,fy2425:388954,fy2526:514187,fy2627:562290,category:"justice"},
+  {name:"Regional Public Health",short:"Health",fy2324:null,fy2425:null,fy2526:323452,fy2627:365026,category:"services"},
+  {name:"Facilities \u2014 Garage",short:"Garage",fy2324:244616,fy2425:129379,fy2526:140534,fy2627:146698,category:"operations"},
 ];
-
 const JAIL = {
-  "FY 23-24": { personnel: 13164530, operations: 6972156, capital: 57496, total: 20194182 },
-  "FY 24-25": { personnel: 15174408, operations: 7324937, capital: 77370, total: 22576715 },
-  "FY 25-26": { personnel: 16111791, operations: 6817942, capital: 119300, total: 23049033 },
-  "FY 26-27": { personnel: 17584530, operations: 7740593, capital: 119300, total: 25444423 },
+  "FY 23-24":{personnel:13164530,operations:6972156,capital:57496},
+  "FY 24-25":{personnel:15174408,operations:7324937,capital:77370},
+  "FY 25-26":{personnel:16111791,operations:6817942,capital:119300},
+  "FY 26-27":{personnel:17584530,operations:7740593,capital:119300},
 };
-
 const JAIL_REV = {
-  "CY 2020": { federal: 3255000, stateDOC: 3127000, other: 0, total: 6382000 },
-  "CY 2021": { federal: 3255000, stateDOC: 3127000, other: 0, total: 6382000 },
-  "CY 2022": { federal: 2700000, stateDOC: 3742000, other: 310000, total: 6752000 },
-  "FY 23-24": { ice: 12510, usMarshall: 0, stateDOC: 3525176, other: -103715, total: 3433971 },
-  "FY 24-25": { ice: 2299772, usMarshall: 1042140, stateDOC: 3269002, other: 600, total: 6611514 },
-  "FY 25-26": { ice: 1149750, usMarshall: 1149750, stateDOC: 3500000, other: 2000, total: 5801500 },
-  "FY 26-27": { ice: 0, usMarshall: 0, stateDOC: 3968303, other: 686, total: 3968989 },
+  "CY 2020":{ice:null,usMarshall:null,stateDOC:null,total:6382000},
+  "CY 2021":{ice:null,usMarshall:null,stateDOC:null,total:6382000},
+  "CY 2022":{ice:null,usMarshall:null,stateDOC:null,total:6752000},
+  "FY 23-24":{ice:12510,usMarshall:0,stateDOC:3525176,total:3433971},
+  "FY 24-25":{ice:2299772,usMarshall:1042140,stateDOC:3269002,total:6611514},
+  "FY 25-26":{ice:1149750,usMarshall:1149750,stateDOC:3500000,total:5801500},
+  "FY 26-27":{ice:0,usMarshall:0,stateDOC:3968303,total:3968989},
 };
+const TAX_IMPACT = {countyImpact:{dollars:2011922,percent:4.78},jailImpact:{dollars:4227901,percent:10.04},arenaImpact:{dollars:-439659,percent:-1.04},totalIncrease:{dollars:5800164,percent:13.77}};
 
-const TAX_IMPACT = {
-  countyImpact: { dollars: 2011922, percent: 4.78 },
-  jailImpact: { dollars: 4227901, percent: 10.04 },
-  arenaImpact: { dollars: -439659, percent: -1.04 },
-  totalIncrease: { dollars: 5800164, percent: 13.77 },
-};
+const P = {red:"#c44840",redDark:"#a33a33",redLight:"#d4716b",cream:"#f7f1e3",white:"#ffffff",text:"#2d2926",textMed:"#5a524b",textMuted:"#8a817a",textLight:"#b5aea6",border:"#e5ded2",borderLight:"#efe9dc",jail:"#c44840",county:"#3a7ca5",arena:"#d4a03c",justice:"#c44840",operations:"#3a7ca5",admin:"#5a8a6a",records:"#d4a03c",safety:"#7a6498",services:"#5a8a6a",danger:"#c44840",success:"#5a8a6a"};
 
-// ═══════════════════════════════════════════════════════════════════════
-// CAMPAIGN COLORS
-// ═══════════════════════════════════════════════════════════════════════
+const fmt=n=>{if(n==null)return"\u2014";if(Math.abs(n)>=1e6)return"$"+(n/1e6).toFixed(1)+"M";if(Math.abs(n)>=1e3)return"$"+(n/1e3).toFixed(0)+"K";return"$"+n.toLocaleString()};
+const fmtFull=n=>n==null?"\u2014":"$"+n.toLocaleString();
+const fmtPct=n=>(n>=0?"+":"")+n.toFixed(1)+"%";
+const pctChange=(a,b)=>(!a||!b)?null:((b-a)/a)*100;
+const sf="'Source Serif 4',Georgia,serif";
+const sn="'Libre Franklin',sans-serif";
+const yrShort=yr=>yr.replace("CY ","'").replace("FY ","");
 
-const P = {
-  red: "#c44840",       // primary accent
-  redDark: "#a33a33",   // darker red for hover/emphasis
-  redLight: "#d4716b",  // lighter red
-  redBg: "#c4484010",   // very faint red background
-  cream: "#f7f1e3",     // warm cream background
-  creamDark: "#ece4d1", // darker cream for borders/hover
-  white: "#ffffff",      // card backgrounds
-  text: "#2d2926",       // near-black warm text
-  textMed: "#5a524b",    // medium text
-  textMuted: "#8a817a",  // muted text
-  textLight: "#b5aea6",  // very light text
-  border: "#e5ded2",     // warm border
-  borderLight: "#efe9dc",
-  // chart palette — red-forward with complementary warm tones
-  jail: "#c44840",
-  county: "#3a7ca5",     // steel blue
-  arena: "#d4a03c",      // warm amber
-  justice: "#c44840",
-  operations: "#3a7ca5",
-  admin: "#5a8a6a",      // muted sage
-  records: "#d4a03c",
-  safety: "#7a6498",     // muted purple
-  services: "#5a8a6a",
-  danger: "#c44840",
-  success: "#5a8a6a",
-};
+function useCounter(target){const[c,setC]=useState(0);const ref=useRef(null);useEffect(()=>{if(ref.current)cancelAnimationFrame(ref.current);const s=performance.now(),from=c;const step=now=>{const p=Math.min((now-s)/1200,1);setC(Math.round(from+(target-from)*(1-Math.pow(1-p,3))));if(p<1)ref.current=requestAnimationFrame(step)};ref.current=requestAnimationFrame(step);return()=>ref.current&&cancelAnimationFrame(ref.current)},[target]);return c}
+function AD({value}){const c=useCounter(value);return h("span",null,"$"+(c/1e6).toFixed(1)+"M")}
 
-const fmt = (n) => {
-  if (n == null) return "\u2014";
-  if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
-  if (Math.abs(n) >= 1e3) return `$${(n / 1e3).toFixed(0)}K`;
-  return `$${n.toLocaleString()}`;
-};
-const fmtFull = (n) => n == null ? "\u2014" : `$${n.toLocaleString()}`;
-const fmtPct = (n) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
-const pctChange = (a, b) => (!a || !b) ? null : ((b - a) / a) * 100;
-
-function useCounter(target, dur = 1200) {
-  const [c, setC] = useState(0);
-  const ref = useRef(null);
-  useEffect(() => {
-    if (ref.current) cancelAnimationFrame(ref.current);
-    const s = performance.now(), from = c;
-    const step = (now) => {
-      const p = Math.min((now - s) / dur, 1);
-      setC(Math.round(from + (target - from) * (1 - Math.pow(1 - p, 3))));
-      if (p < 1) ref.current = requestAnimationFrame(step);
-    };
-    ref.current = requestAnimationFrame(step);
-    return () => ref.current && cancelAnimationFrame(ref.current);
-  }, [target]);
-  return c;
-}
-
-function AD({ value }) {
-  const c = useCounter(value);
-  return <span>${(c / 1e6).toFixed(1)}M</span>;
-}
-
-function Tip({ active, payload, label }) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div style={{ background: P.white, border: `1px solid ${P.border}`, borderRadius: 8, padding: "10px 14px", boxShadow: "0 4px 16px rgba(45,41,38,0.12)" }}>
-      <div style={{ color: P.red, fontFamily: "'Source Serif 4', Georgia, serif", fontSize: 13, marginBottom: 6 }}>{label}</div>
-      {payload.map((p, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: P.text, marginBottom: 2 }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
-          <span style={{ color: P.textMuted }}>{p.name}:</span>
-          <span style={{ fontWeight: 600 }}>{fmtFull(p.value)}</span>
-        </div>
-      ))}
-    </div>
+function Tip({active,payload,label}){
+  if(!active||!payload?.length)return null;
+  return h("div",{style:{background:P.white,border:"1px solid "+P.border,borderRadius:8,padding:"10px 14px",boxShadow:"0 4px 16px rgba(45,41,38,0.12)"}},
+    h("div",{style:{color:P.red,fontFamily:sf,fontSize:13,marginBottom:6}},label),
+    payload.map((p,i)=>h("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,fontSize:12,color:P.text,marginBottom:2}},h("span",{style:{width:8,height:8,borderRadius:"50%",background:p.color,flexShrink:0}}),h("span",{style:{color:P.textMuted}},p.name+":"),h("span",{style:{fontWeight:600}},fmtFull(p.value))))
   );
 }
 
-// ── TAB 1: BREAKDOWN ──
-function BreakdownTab({ year }) {
-  const [hov, setHov] = useState(null);
-  const d = DIVISIONS[year], cm = COMBINED[year];
-  const divData = [
-    { name: "County Jail", value: d.jail, color: P.jail },
-    { name: "County Government", value: d.county, color: P.county },
-    { name: "Cross Insurance Arena", value: d.arena, color: P.arena },
-  ];
-  const isFY = year.startsWith("FY");
-  const yrKey = year === "FY 23-24" ? "fy2324" : year === "FY 24-25" ? "fy2425" : year === "FY 25-26" ? "fy2526" : "fy2627";
-  const deptData = isFY ? DEPARTMENTS.filter(x => x[yrKey]).map(x => ({
-    name: x.short, fullName: x.name, value: x[yrKey], category: x.category
-  })).sort((a, b) => b.value - a.value) : null;
-  const jailPct = ((d.jail / cm.expenditures) * 100).toFixed(1);
+function BreakdownTab({year}){
+  const[hov,setHov]=useState(null);const d=DIVISIONS[year],cm=COMBINED[year];
+  const divData=[{name:"County Jail",value:d.jail,color:P.jail},{name:"County Government",value:d.county,color:P.county},{name:"Cross Insurance Arena",value:d.arena,color:P.arena}];
+  const isFY=year.startsWith("FY");const yrKey=year==="FY 23-24"?"fy2324":year==="FY 24-25"?"fy2425":year==="FY 25-26"?"fy2526":"fy2627";
+  const deptData=isFY?DEPARTMENTS.filter(x=>x[yrKey]).map(x=>({name:x.short,fullName:x.name,value:x[yrKey],category:x.category})).sort((a,b)=>b.value-a.value):null;
+  const jailPct=((d.jail/cm.expenditures)*100).toFixed(1);
+  const cards=[{label:"Total Budget",value:cm.expenditures,sub:YEAR_LABELS[year]},{label:"Tax Revenue Required",value:cm.taxRequired,sub:"Municipal assessment"},{label:"Non-Tax Revenue",value:cm.revenues,sub:"Fees, services, state"}];
 
-  return (
-    <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 28 }}>
-        {[
-          { label: "Total Budget", value: cm.expenditures, sub: YEAR_LABELS[year] },
-          { label: "Tax Revenue Required", value: cm.taxRequired, sub: "Municipal assessment" },
-          { label: "Non-Tax Revenue", value: cm.revenues, sub: "Fees, services, state" },
-        ].map((card, i) => (
-          <div key={i} style={{ background: P.white, border: `1px solid ${P.border}`, borderRadius: 12, padding: "18px 20px", position: "relative", overflow: "hidden" }}>
-            <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 3, background: P.red }} />
-            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 1.5, color: P.textMuted, marginBottom: 6 }}>{card.label}</div>
-            <div style={{ fontSize: 28, fontWeight: 700, color: P.red, fontFamily: "'Source Serif 4', Georgia, serif" }}><AD value={card.value} /></div>
-            <div style={{ fontSize: 11, color: P.textLight, marginTop: 4 }}>{card.sub}</div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 28 }}>
-        <div>
-          <h3 style={{ fontSize: 15, color: P.text, fontFamily: "'Source Serif 4', Georgia, serif", marginBottom: 12 }}>Three Budget Divisions</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie data={divData} cx="50%" cy="50%" innerRadius={55} outerRadius={105} dataKey="value"
-                onMouseEnter={(_, i) => setHov(i)} onMouseLeave={() => setHov(null)} stroke={P.white} strokeWidth={2}>
-                {divData.map((x, i) => <Cell key={i} fill={x.color} opacity={hov == null || hov === i ? 1 : 0.4} style={{ transition: "opacity 0.2s", cursor: "pointer" }} />)}
-              </Pie>
-              <Tooltip content={<Tip />} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-        <div>
-          <h3 style={{ fontSize: 15, color: P.text, fontFamily: "'Source Serif 4', Georgia, serif", marginBottom: 12 }}>Division Summary</h3>
-          {divData.map((x, i) => (
-            <div key={i} onMouseEnter={() => setHov(i)} onMouseLeave={() => setHov(null)}
-              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", marginBottom: 6, borderRadius: 8, background: hov === i ? `${x.color}0C` : "transparent", border: `1px solid ${hov === i ? x.color + "30" : "transparent"}`, transition: "all 0.2s", cursor: "pointer" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ width: 10, height: 10, borderRadius: 3, background: x.color }} />
-                <span style={{ fontSize: 13, color: P.text }}>{x.name}</span>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: P.text }}>{fmt(x.value)}</div>
-                <div style={{ fontSize: 11, color: P.textMuted }}>{((x.value / cm.expenditures) * 100).toFixed(1)}%</div>
-              </div>
-            </div>
-          ))}
-          <div style={{ marginTop: 14, padding: "12px 14px", background: `${P.red}0A`, border: `1px solid ${P.red}25`, borderRadius: 8 }}>
-            <div style={{ fontSize: 12, color: P.red, fontWeight: 600 }}>The county jail is {jailPct}% of the entire budget</div>
-          </div>
-        </div>
-      </div>
-
-      {isFY && deptData ? (
-        <>
-          <h3 style={{ fontSize: 15, color: P.text, fontFamily: "'Source Serif 4', Georgia, serif", marginBottom: 12 }}>County Government Departments</h3>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-              <thead>
-                <tr style={{ borderBottom: `2px solid ${P.border}` }}>
-                  <th style={{ textAlign: "left", padding: "8px 10px", color: P.textMuted, fontWeight: 500 }}>Department</th>
-                  <th style={{ textAlign: "right", padding: "8px 10px", color: P.textMuted, fontWeight: 500 }}>{year} Budget</th>
-                  <th style={{ textAlign: "right", padding: "8px 10px", color: P.textMuted, fontWeight: 500 }}>% of County</th>
-                  <th style={{ textAlign: "left", padding: "8px 10px", color: P.textMuted, fontWeight: 500 }}>Category</th>
-                </tr>
-              </thead>
-              <tbody>
-                {deptData.map((x, i) => (
-                  <tr key={i} style={{ borderBottom: `1px solid ${P.borderLight}` }}>
-                    <td style={{ padding: "7px 10px", color: P.text }}>
-                      <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: P[x.category], marginRight: 8, verticalAlign: "middle" }} />
-                      {x.fullName}
-                    </td>
-                    <td style={{ padding: "7px 10px", color: P.text, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtFull(x.value)}</td>
-                    <td style={{ padding: "7px 10px", color: P.textMuted, textAlign: "right" }}>{((x.value / d.county) * 100).toFixed(1)}%</td>
-                    <td style={{ padding: "7px 10px" }}>
-                      <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: `${P[x.category]}15`, color: P[x.category], textTransform: "capitalize" }}>{x.category}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      ) : (
-        <div style={{ padding: 16, background: P.white, borderRadius: 10, fontSize: 13, color: P.textMuted, textAlign: "center", border: `1px solid ${P.border}` }}>
-          Department-level detail is available for fiscal year budgets (FY 23-24 onward). Calendar year budgets show division-level totals only.
-        </div>
-      )}
-    </div>
+  return h("div",null,
+    h("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:16,marginBottom:28}},cards.map((c,i)=>h("div",{key:i,style:{background:P.white,border:"1px solid "+P.border,borderRadius:12,padding:"18px 20px",position:"relative",overflow:"hidden"}},h("div",{style:{position:"absolute",top:0,left:0,width:"100%",height:3,background:P.red}}),h("div",{style:{fontSize:11,textTransform:"uppercase",letterSpacing:1.5,color:P.textMuted,marginBottom:6}},c.label),h("div",{style:{fontSize:28,fontWeight:700,color:P.red,fontFamily:sf}},h(AD,{value:c.value})),h("div",{style:{fontSize:11,color:P.textLight,marginTop:4}},c.sub)))),
+    h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24,marginBottom:28}},
+      h("div",null,h("h3",{style:{fontSize:15,color:P.text,fontFamily:sf,marginBottom:12}},"Three Budget Divisions"),h(ResponsiveContainer,{width:"100%",height:260},h(PieChart,null,h(Pie,{data:divData,cx:"50%",cy:"50%",innerRadius:55,outerRadius:105,dataKey:"value",onMouseEnter:(_,i)=>setHov(i),onMouseLeave:()=>setHov(null),stroke:P.white,strokeWidth:2},divData.map((x,i)=>h(Cell,{key:i,fill:x.color,opacity:hov==null||hov===i?1:0.4,style:{transition:"opacity 0.2s",cursor:"pointer"}}))),h(Tooltip,{content:h(Tip)})))),
+      h("div",null,h("h3",{style:{fontSize:15,color:P.text,fontFamily:sf,marginBottom:12}},"Division Summary"),
+        divData.map((x,i)=>h("div",{key:i,onMouseEnter:()=>setHov(i),onMouseLeave:()=>setHov(null),style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",marginBottom:6,borderRadius:8,background:hov===i?x.color+"0C":"transparent",border:"1px solid "+(hov===i?x.color+"30":"transparent"),transition:"all 0.2s",cursor:"pointer"}},h("div",{style:{display:"flex",alignItems:"center",gap:10}},h("span",{style:{width:10,height:10,borderRadius:3,background:x.color}}),h("span",{style:{fontSize:13,color:P.text}},x.name)),h("div",{style:{textAlign:"right"}},h("div",{style:{fontSize:14,fontWeight:600,color:P.text}},fmt(x.value)),h("div",{style:{fontSize:11,color:P.textMuted}},((x.value/cm.expenditures)*100).toFixed(1)+"%")))),
+        h("div",{style:{marginTop:14,padding:"12px 14px",background:P.red+"0A",border:"1px solid "+P.red+"25",borderRadius:8}},h("div",{style:{fontSize:12,color:P.red,fontWeight:600}},"The county jail is "+jailPct+"% of the entire budget"))
+      )
+    ),
+    isFY&&deptData?h(Fragment,null,
+      h("h3",{style:{fontSize:15,color:P.text,fontFamily:sf,marginBottom:12}},"County Government Departments"),
+      h("div",{style:{overflowX:"auto"}},h("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+        h("thead",null,h("tr",{style:{borderBottom:"2px solid "+P.border}},h("th",{style:{textAlign:"left",padding:"8px 10px",color:P.textMuted,fontWeight:500}},"Department"),h("th",{style:{textAlign:"right",padding:"8px 10px",color:P.textMuted,fontWeight:500}},year+" Budget"),h("th",{style:{textAlign:"right",padding:"8px 10px",color:P.textMuted,fontWeight:500}},"% of County"),h("th",{style:{textAlign:"left",padding:"8px 10px",color:P.textMuted,fontWeight:500}},"Category"))),
+        h("tbody",null,deptData.map((x,i)=>h("tr",{key:i,style:{borderBottom:"1px solid "+P.borderLight}},h("td",{style:{padding:"7px 10px",color:P.text}},h("span",{style:{display:"inline-block",width:8,height:8,borderRadius:2,background:P[x.category],marginRight:8,verticalAlign:"middle"}}),x.fullName),h("td",{style:{padding:"7px 10px",color:P.text,textAlign:"right",fontVariantNumeric:"tabular-nums"}},fmtFull(x.value)),h("td",{style:{padding:"7px 10px",color:P.textMuted,textAlign:"right"}},((x.value/d.county)*100).toFixed(1)+"%"),h("td",{style:{padding:"7px 10px"}},h("span",{style:{fontSize:10,padding:"2px 8px",borderRadius:10,background:P[x.category]+"15",color:P[x.category],textTransform:"capitalize"}},x.category)))))
+      ))
+    ):h("div",{style:{padding:16,background:P.white,borderRadius:10,fontSize:13,color:P.textMuted,textAlign:"center",border:"1px solid "+P.border}},"Department-level detail is available for fiscal year budgets (FY 23-24 onward).")
   );
 }
 
-// ── TAB 2: YEAR-OVER-YEAR ──
-function ComparisonTab() {
-  const barData = ALL_YEARS.map(yr => ({
-    name: yr.replace("CY ", "'").replace("FY ", ""), County: DIVISIONS[yr].county, Jail: DIVISIONS[yr].jail, Arena: DIVISIONS[yr].arena,
-  }));
-  const taxData = ALL_YEARS.map(yr => ({
-    name: yr.replace("CY ", "'").replace("FY ", ""), "Tax Required": COMBINED[yr].taxRequired, Revenue: COMBINED[yr].revenues,
-  }));
-
-  return (
-    <div>
-      <div style={{ padding: "10px 14px", background: `${P.county}0A`, border: `1px solid ${P.county}20`, borderRadius: 8, marginBottom: 20, fontSize: 11, color: P.textMed }}>
-        Note: County switched from calendar year (CY) to fiscal year (FY, Jul-Jun) in 2023. A 6-month transition budget is omitted for clarity.
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 28 }}>
-        <div>
-          <h3 style={{ fontSize: 15, color: P.text, fontFamily: "'Source Serif 4', Georgia, serif", marginBottom: 12 }}>Expenditures by Division</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={barData} barGap={2}>
-              <CartesianGrid strokeDasharray="3 3" stroke={P.borderLight} />
-              <XAxis dataKey="name" tick={{ fill: P.textMuted, fontSize: 10 }} axisLine={{ stroke: P.border }} />
-              <YAxis tick={{ fill: P.textMuted, fontSize: 10 }} axisLine={false} tickFormatter={v => `$${(v / 1e6).toFixed(0)}M`} />
-              <Tooltip content={<Tip />} />
-              <Bar dataKey="Jail" stackId="a" fill={P.jail} />
-              <Bar dataKey="County" stackId="a" fill={P.county} />
-              <Bar dataKey="Arena" stackId="a" fill={P.arena} radius={[4, 4, 0, 0]} />
-              <Legend wrapperStyle={{ fontSize: 11, color: P.textMuted }} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div>
-          <h3 style={{ fontSize: 15, color: P.text, fontFamily: "'Source Serif 4', Georgia, serif", marginBottom: 12 }}>Tax Assessment vs. Revenue</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={taxData} barGap={4}>
-              <CartesianGrid strokeDasharray="3 3" stroke={P.borderLight} />
-              <XAxis dataKey="name" tick={{ fill: P.textMuted, fontSize: 10 }} axisLine={{ stroke: P.border }} />
-              <YAxis tick={{ fill: P.textMuted, fontSize: 10 }} axisLine={false} tickFormatter={v => `$${(v / 1e6).toFixed(0)}M`} />
-              <Tooltip content={<Tip />} />
-              <Bar dataKey="Tax Required" fill={P.red} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Revenue" fill={P.admin} radius={[4, 4, 0, 0]} />
-              <Legend wrapperStyle={{ fontSize: 11, color: P.textMuted }} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      <h3 style={{ fontSize: 15, color: P.text, fontFamily: "'Source Serif 4', Georgia, serif", marginBottom: 12 }}>Year-Over-Year Changes</h3>
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-          <thead>
-            <tr style={{ borderBottom: `2px solid ${P.border}` }}>
-              <th style={{ textAlign: "left", padding: "8px 10px", color: P.textMuted, fontWeight: 500, minWidth: 130 }}>Metric</th>
-              {ALL_YEARS.map(yr => <th key={yr} style={{ textAlign: "right", padding: "8px 6px", color: P.textMuted, fontWeight: 500, fontSize: 10 }}>{yr}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              { label: "Total Expenditures", vals: ALL_YEARS.map(yr => COMBINED[yr].expenditures), bold: true },
-              { label: "County Government", vals: ALL_YEARS.map(yr => DIVISIONS[yr].county) },
-              { label: "County Jail", vals: ALL_YEARS.map(yr => DIVISIONS[yr].jail) },
-              { label: "Arena", vals: ALL_YEARS.map(yr => DIVISIONS[yr].arena) },
-              { label: "Tax Required", vals: ALL_YEARS.map(yr => COMBINED[yr].taxRequired), bold: true },
-              { label: "Non-Tax Revenue", vals: ALL_YEARS.map(yr => COMBINED[yr].revenues) },
-            ].map((row, ri) => (
-              <tr key={ri} style={{ borderBottom: `1px solid ${P.borderLight}` }}>
-                <td style={{ padding: "7px 10px", color: P.text, fontWeight: row.bold ? 600 : 400, fontSize: 12 }}>{row.label}</td>
-                {row.vals.map((v, vi) => {
-                  const ch = vi > 0 ? pctChange(row.vals[vi - 1], v) : null;
-                  return (
-                    <td key={vi} style={{ padding: "6px 6px", textAlign: "right" }}>
-                      <div style={{ color: P.text, fontVariantNumeric: "tabular-nums", fontSize: 11 }}>{fmt(v)}</div>
-                      {ch !== null && <div style={{ fontSize: 9, color: ch > 0 ? P.danger : P.success }}>{fmtPct(ch)}</div>}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+function ComparisonTab(){
+  const barData=ALL_YEARS.map(yr=>({name:yrShort(yr),County:DIVISIONS[yr].county,Jail:DIVISIONS[yr].jail,Arena:DIVISIONS[yr].arena}));
+  const taxData=ALL_YEARS.map(yr=>({name:yrShort(yr),"Tax Required":COMBINED[yr].taxRequired,Revenue:COMBINED[yr].revenues}));
+  const rows=[{label:"Total Expenditures",vals:ALL_YEARS.map(yr=>COMBINED[yr].expenditures),bold:true},{label:"County Government",vals:ALL_YEARS.map(yr=>DIVISIONS[yr].county)},{label:"County Jail",vals:ALL_YEARS.map(yr=>DIVISIONS[yr].jail)},{label:"Arena",vals:ALL_YEARS.map(yr=>DIVISIONS[yr].arena)},{label:"Tax Required",vals:ALL_YEARS.map(yr=>COMBINED[yr].taxRequired),bold:true},{label:"Non-Tax Revenue",vals:ALL_YEARS.map(yr=>COMBINED[yr].revenues)}];
+  return h("div",null,
+    h("div",{style:{padding:"10px 14px",background:P.county+"0A",border:"1px solid "+P.county+"20",borderRadius:8,marginBottom:20,fontSize:11,color:P.textMed}},"Note: County switched from calendar year (CY) to fiscal year (FY, Jul-Jun) in 2023. A 6-month transition budget is omitted for clarity."),
+    h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24,marginBottom:28}},
+      h("div",null,h("h3",{style:{fontSize:15,color:P.text,fontFamily:sf,marginBottom:12}},"Expenditures by Division"),h(ResponsiveContainer,{width:"100%",height:300},h(BarChart,{data:barData,barGap:2},h(CartesianGrid,{strokeDasharray:"3 3",stroke:P.borderLight}),h(XAxis,{dataKey:"name",tick:{fill:P.textMuted,fontSize:10},axisLine:{stroke:P.border}}),h(YAxis,{tick:{fill:P.textMuted,fontSize:10},axisLine:false,tickFormatter:v=>"$"+(v/1e6).toFixed(0)+"M"}),h(Tooltip,{content:h(Tip)}),h(Bar,{dataKey:"Jail",stackId:"a",fill:P.jail}),h(Bar,{dataKey:"County",stackId:"a",fill:P.county}),h(Bar,{dataKey:"Arena",stackId:"a",fill:P.arena,radius:[4,4,0,0]}),h(Legend,{wrapperStyle:{fontSize:11,color:P.textMuted}})))),
+      h("div",null,h("h3",{style:{fontSize:15,color:P.text,fontFamily:sf,marginBottom:12}},"Tax Assessment vs. Revenue"),h(ResponsiveContainer,{width:"100%",height:300},h(BarChart,{data:taxData,barGap:4},h(CartesianGrid,{strokeDasharray:"3 3",stroke:P.borderLight}),h(XAxis,{dataKey:"name",tick:{fill:P.textMuted,fontSize:10},axisLine:{stroke:P.border}}),h(YAxis,{tick:{fill:P.textMuted,fontSize:10},axisLine:false,tickFormatter:v=>"$"+(v/1e6).toFixed(0)+"M"}),h(Tooltip,{content:h(Tip)}),h(Bar,{dataKey:"Tax Required",fill:P.red,radius:[4,4,0,0]}),h(Bar,{dataKey:"Revenue",fill:P.admin,radius:[4,4,0,0]}),h(Legend,{wrapperStyle:{fontSize:11,color:P.textMuted}}))))
+    ),
+    h("h3",{style:{fontSize:15,color:P.text,fontFamily:sf,marginBottom:12}},"Year-Over-Year Changes"),
+    h("div",{style:{overflowX:"auto"}},h("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+      h("thead",null,h("tr",{style:{borderBottom:"2px solid "+P.border}},h("th",{style:{textAlign:"left",padding:"8px 10px",color:P.textMuted,fontWeight:500,minWidth:130}},"Metric"),ALL_YEARS.map(yr=>h("th",{key:yr,style:{textAlign:"right",padding:"8px 6px",color:P.textMuted,fontWeight:500,fontSize:10}},yr)))),
+      h("tbody",null,rows.map((row,ri)=>h("tr",{key:ri,style:{borderBottom:"1px solid "+P.borderLight}},h("td",{style:{padding:"7px 10px",color:P.text,fontWeight:row.bold?600:400}},row.label),row.vals.map((v,vi)=>{const ch=vi>0?pctChange(row.vals[vi-1],v):null;return h("td",{key:vi,style:{padding:"6px 6px",textAlign:"right"}},h("div",{style:{color:P.text,fontVariantNumeric:"tabular-nums",fontSize:11}},fmt(v)),ch!==null?h("div",{style:{fontSize:9,color:ch>0?P.danger:P.success}},fmtPct(ch)):null)}))))
+    ))
   );
 }
 
-// ── TAB 3: TRENDS ──
-function TrendsTab() {
-  const getVal = (dept, yr) => {
-    const k = yr === "FY 23-24" ? "fy2324" : yr === "FY 24-25" ? "fy2425" : yr === "FY 25-26" ? "fy2526" : "fy2627";
-    const d = DEPARTMENTS.find(x => x.short === dept);
-    return d ? (d[k] || 0) : 0;
-  };
-
-  const trendAll = ALL_YEARS.map(yr => ({
-    name: yr.replace("CY ", "'").replace("FY ", ""),
-    Jail: DIVISIONS[yr].jail, County: DIVISIONS[yr].county, "Tax Required": COMBINED[yr].taxRequired,
-  }));
-
-  const trendDept = FISCAL_YEARS.map(yr => ({
-    name: yr, Jail: DIVISIONS[yr].jail,
-    "Sheriff (All)": getVal("Sheriff LE", yr) + getVal("Sheriff Admin", yr) + getVal("Civil", yr),
-    Communications: getVal("Comms", yr), Facilities: getVal("Facilities", yr),
-  }));
-
-  const shareData = ALL_YEARS.map(yr => ({
-    name: yr.replace("CY ", "'").replace("FY ", ""),
-    "Jail %": parseFloat(((DIVISIONS[yr].jail / COMBINED[yr].expenditures) * 100).toFixed(1)),
-    "County %": parseFloat(((DIVISIONS[yr].county / COMBINED[yr].expenditures) * 100).toFixed(1)),
-  }));
-
-  return (
-    <div>
-      <h3 style={{ fontSize: 15, color: P.text, fontFamily: "'Source Serif 4', Georgia, serif", marginBottom: 12 }}>Total Budget Growth (CY 2020 \u2013 FY 26-27)</h3>
-      <ResponsiveContainer width="100%" height={280}>
-        <AreaChart data={trendAll}>
-          <defs>
-            <linearGradient id="jailG" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={P.jail} stopOpacity={0.2} />
-              <stop offset="95%" stopColor={P.jail} stopOpacity={0.02} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke={P.borderLight} />
-          <XAxis dataKey="name" tick={{ fill: P.textMuted, fontSize: 10 }} axisLine={{ stroke: P.border }} />
-          <YAxis tick={{ fill: P.textMuted, fontSize: 10 }} axisLine={false} tickFormatter={v => `$${(v / 1e6).toFixed(0)}M`} />
-          <Tooltip content={<Tip />} />
-          <Area type="monotone" dataKey="Jail" stroke={P.jail} fill="url(#jailG)" strokeWidth={2.5} />
-          <Line type="monotone" dataKey="County" stroke={P.county} strokeWidth={2} dot={{ r: 3 }} />
-          <Line type="monotone" dataKey="Tax Required" stroke={P.arena} strokeWidth={2} strokeDasharray="6 3" dot={{ r: 3 }} />
-          <Legend wrapperStyle={{ fontSize: 11, color: P.textMuted }} />
-        </AreaChart>
-      </ResponsiveContainer>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginTop: 28 }}>
-        <div>
-          <h3 style={{ fontSize: 15, color: P.text, fontFamily: "'Source Serif 4', Georgia, serif", marginBottom: 12 }}>Department Trends (FY Only)</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={trendDept}>
-              <CartesianGrid strokeDasharray="3 3" stroke={P.borderLight} />
-              <XAxis dataKey="name" tick={{ fill: P.textMuted, fontSize: 10 }} axisLine={{ stroke: P.border }} />
-              <YAxis tick={{ fill: P.textMuted, fontSize: 10 }} axisLine={false} tickFormatter={v => `$${(v / 1e6).toFixed(0)}M`} />
-              <Tooltip content={<Tip />} />
-              <Line type="monotone" dataKey="Jail" stroke={P.jail} strokeWidth={2.5} dot={{ r: 4, fill: P.jail }} />
-              <Line type="monotone" dataKey="Sheriff (All)" stroke={P.arena} strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="Communications" stroke={P.county} strokeWidth={1.5} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="Facilities" stroke={P.admin} strokeWidth={1.5} dot={{ r: 3 }} />
-              <Legend wrapperStyle={{ fontSize: 11, color: P.textMuted }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-        <div>
-          <h3 style={{ fontSize: 15, color: P.text, fontFamily: "'Source Serif 4', Georgia, serif", marginBottom: 12 }}>Jail vs. County Share of Budget</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={shareData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={P.borderLight} />
-              <XAxis dataKey="name" tick={{ fill: P.textMuted, fontSize: 10 }} axisLine={{ stroke: P.border }} />
-              <YAxis domain={[30, 60]} tick={{ fill: P.textMuted, fontSize: 10 }} axisLine={false} tickFormatter={v => `${v}%`} />
-              <Tooltip formatter={v => `${v}%`} contentStyle={{ background: P.white, border: `1px solid ${P.border}`, borderRadius: 8, fontSize: 12 }} />
-              <Line type="monotone" dataKey="Jail %" stroke={P.jail} strokeWidth={2.5} dot={{ r: 5, fill: P.jail }} />
-              <Line type="monotone" dataKey="County %" stroke={P.county} strokeWidth={2.5} dot={{ r: 5, fill: P.county }} />
-              <Legend wrapperStyle={{ fontSize: 11, color: P.textMuted }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      <div style={{ marginTop: 24, padding: "16px 20px", background: P.white, border: `1px solid ${P.border}`, borderRadius: 12 }}>
-        <div style={{ fontSize: 13, color: P.red, fontWeight: 600, marginBottom: 8, fontFamily: "'Source Serif 4', Georgia, serif" }}>7-Year Growth Summary</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-          {[
-            { label: "Total Budget", from: COMBINED["CY 2020"].expenditures, to: COMBINED["FY 26-27"].expenditures },
-            { label: "Jail Budget", from: DIVISIONS["CY 2020"].jail, to: DIVISIONS["FY 26-27"].jail },
-            { label: "Tax Required", from: COMBINED["CY 2020"].taxRequired, to: COMBINED["FY 26-27"].taxRequired },
-          ].map((s, i) => {
-            const growth = ((s.to - s.from) / s.from * 100).toFixed(1);
-            return (
-              <div key={i} style={{ fontSize: 12, color: P.text }}>
-                <span style={{ color: P.textMuted }}>{s.label}:</span>{" "}
-                {fmt(s.from)} \u2192 {fmt(s.to)}{" "}
-                <span style={{ color: P.red, fontWeight: 600 }}>+{growth}%</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
+function TrendsTab(){
+  const trendAll=ALL_YEARS.map(yr=>({name:yrShort(yr),Jail:DIVISIONS[yr].jail,County:DIVISIONS[yr].county,"Tax Required":COMBINED[yr].taxRequired}));
+  const shareData=ALL_YEARS.map(yr=>({name:yrShort(yr),"Jail %":parseFloat(((DIVISIONS[yr].jail/COMBINED[yr].expenditures)*100).toFixed(1)),"County %":parseFloat(((DIVISIONS[yr].county/COMBINED[yr].expenditures)*100).toFixed(1))}));
+  const growth=[{label:"Total Budget",from:COMBINED["CY 2020"].expenditures,to:COMBINED["FY 26-27"].expenditures},{label:"Jail Budget",from:DIVISIONS["CY 2020"].jail,to:DIVISIONS["FY 26-27"].jail},{label:"Tax Required",from:COMBINED["CY 2020"].taxRequired,to:COMBINED["FY 26-27"].taxRequired}];
+  return h("div",null,
+    h("h3",{style:{fontSize:15,color:P.text,fontFamily:sf,marginBottom:12}},"Total Budget Growth (CY 2020 \u2013 FY 26-27)"),
+    h(ResponsiveContainer,{width:"100%",height:280},h(AreaChart,{data:trendAll},h("defs",null,h("linearGradient",{id:"jailG",x1:"0",y1:"0",x2:"0",y2:"1"},h("stop",{offset:"5%",stopColor:P.jail,stopOpacity:0.2}),h("stop",{offset:"95%",stopColor:P.jail,stopOpacity:0.02}))),h(CartesianGrid,{strokeDasharray:"3 3",stroke:P.borderLight}),h(XAxis,{dataKey:"name",tick:{fill:P.textMuted,fontSize:10},axisLine:{stroke:P.border}}),h(YAxis,{tick:{fill:P.textMuted,fontSize:10},axisLine:false,tickFormatter:v=>"$"+(v/1e6).toFixed(0)+"M"}),h(Tooltip,{content:h(Tip)}),h(Area,{type:"monotone",dataKey:"Jail",stroke:P.jail,fill:"url(#jailG)",strokeWidth:2.5}),h(Line,{type:"monotone",dataKey:"County",stroke:P.county,strokeWidth:2,dot:{r:3}}),h(Line,{type:"monotone",dataKey:"Tax Required",stroke:P.arena,strokeWidth:2,strokeDasharray:"6 3",dot:{r:3}}),h(Legend,{wrapperStyle:{fontSize:11,color:P.textMuted}}))),
+    h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24,marginTop:28}},
+      h("div",null,h("h3",{style:{fontSize:15,color:P.text,fontFamily:sf,marginBottom:12}},"Jail vs. County Share of Budget"),h(ResponsiveContainer,{width:"100%",height:260},h(LineChart,{data:shareData},h(CartesianGrid,{strokeDasharray:"3 3",stroke:P.borderLight}),h(XAxis,{dataKey:"name",tick:{fill:P.textMuted,fontSize:10},axisLine:{stroke:P.border}}),h(YAxis,{domain:[30,60],tick:{fill:P.textMuted,fontSize:10},axisLine:false,tickFormatter:v=>v+"%"}),h(Tooltip,{formatter:v=>v+"%",contentStyle:{background:P.white,border:"1px solid "+P.border,borderRadius:8,fontSize:12}}),h(Line,{type:"monotone",dataKey:"Jail %",stroke:P.jail,strokeWidth:2.5,dot:{r:5,fill:P.jail}}),h(Line,{type:"monotone",dataKey:"County %",stroke:P.county,strokeWidth:2.5,dot:{r:5,fill:P.county}}),h(Legend,{wrapperStyle:{fontSize:11,color:P.textMuted}})))),
+      h("div",{style:{display:"flex",alignItems:"center"}},h("div",{style:{padding:"16px 20px",background:P.white,border:"1px solid "+P.border,borderRadius:12,width:"100%"}},h("div",{style:{fontSize:13,color:P.red,fontWeight:600,marginBottom:8,fontFamily:sf}},"7-Year Growth Summary"),growth.map((s,i)=>{const g=((s.to-s.from)/s.from*100).toFixed(1);return h("div",{key:i,style:{fontSize:12,color:P.text,marginBottom:6}},h("span",{style:{color:P.textMuted}},s.label+": "),fmt(s.from)+" \u2192 "+fmt(s.to)+" ",h("span",{style:{color:P.red,fontWeight:600}},"+"+g+"%"))})))
+    )
   );
 }
 
-// ── TAB 4: REVENUE ──
-function RevenueTab() {
-  const revBreak = [
-    { name: "Municipal Tax Assessment", "FY 25-26": 42119604, "FY 26-27": 47919768, color: P.red },
-    { name: "Registry of Deeds", "FY 25-26": 2955000, "FY 26-27": 3200000, color: P.arena },
-    { name: "Communications (CCRCC)", "FY 25-26": 1820705, "FY 26-27": 1868686, color: P.county },
-    { name: "Jail Revenue (incl. ICE)", "FY 25-26": 5801500, "FY 26-27": 3968989, color: P.redLight },
-    { name: "Parking Garage", "FY 25-26": 950000, "FY 26-27": 1075000, color: P.admin },
-    { name: "Registry of Probate", "FY 25-26": 784000, "FY 26-27": 849000, color: P.safety },
-    { name: "Civil Process", "FY 25-26": 420000, "FY 26-27": 420000, color: "#8a6e3e" },
-    { name: "Other Revenue", "FY 25-26": 662120, "FY 26-27": 671900, color: P.textLight },
-  ];
-  const pie = revBreak.map(r => ({ name: r.name, value: r["FY 26-27"], color: r.color }));
-
-  const jailRevYears = ["CY 2020", "CY 2021", "CY 2022", "FY 23-24", "FY 24-25", "FY 25-26", "FY 26-27"];
-  const jailRevData = jailRevYears.map(yr => ({
-    name: yr.replace("CY ", "'").replace("FY ", ""),
-    Total: JAIL_REV[yr]?.total || 0,
-  }));
-
-  return (
-    <div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 28 }}>
-        <div>
-          <h3 style={{ fontSize: 15, color: P.text, fontFamily: "'Source Serif 4', Georgia, serif", marginBottom: 12 }}>FY 26-27 Revenue Sources</h3>
-          <ResponsiveContainer width="100%" height={280}>
-            <PieChart>
-              <Pie data={pie} cx="50%" cy="50%" innerRadius={50} outerRadius={110} dataKey="value" stroke={P.white} strokeWidth={2}>
-                {pie.map((x, i) => <Cell key={i} fill={x.color} />)}
-              </Pie>
-              <Tooltip content={<Tip />} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-        <div>
-          <h3 style={{ fontSize: 15, color: P.text, fontFamily: "'Source Serif 4', Georgia, serif", marginBottom: 12 }}>Revenue Comparison</h3>
-          {revBreak.map((r, i) => {
-            const ch = pctChange(r["FY 25-26"], r["FY 26-27"]);
-            return (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", borderBottom: `1px solid ${P.borderLight}` }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: P.text }}>
-                  <span style={{ width: 8, height: 8, borderRadius: 2, background: r.color, flexShrink: 0 }} /> {r.name}
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <span style={{ fontSize: 12, fontWeight: 500, color: P.text, fontVariantNumeric: "tabular-nums" }}>{fmt(r["FY 26-27"])}</span>
-                  <span style={{ fontSize: 10, marginLeft: 8, color: ch > 0 ? P.success : P.danger }}>{fmtPct(ch)}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div style={{ padding: "18px 20px", background: `${P.red}08`, border: `1px solid ${P.red}20`, borderRadius: 12 }}>
-        <h3 style={{ fontSize: 15, color: P.red, fontFamily: "'Source Serif 4', Georgia, serif", marginBottom: 14 }}>Jail Revenue: From $6.8M to $4.0M</h3>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={jailRevData}>
-            <CartesianGrid strokeDasharray="3 3" stroke={P.borderLight} />
-            <XAxis dataKey="name" tick={{ fill: P.textMuted, fontSize: 10 }} axisLine={{ stroke: P.border }} />
-            <YAxis tick={{ fill: P.textMuted, fontSize: 10 }} axisLine={false} tickFormatter={v => `$${(v / 1e6).toFixed(1)}M`} />
-            <Tooltip content={<Tip />} />
-            <Bar dataKey="Total" fill={P.red} radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 8, marginTop: 14 }}>
-          {["FY 23-24", "FY 24-25", "FY 25-26", "FY 26-27"].map(yr => {
-            const jr = JAIL_REV[yr];
-            return (
-              <div key={yr} style={{ background: P.white, borderRadius: 8, padding: "10px 12px", border: `1px solid ${P.border}` }}>
-                <div style={{ fontSize: 10, color: P.textMuted, marginBottom: 6 }}>{yr}</div>
-                <div style={{ fontSize: 11, marginBottom: 2 }}>
-                  <span style={{ color: P.textLight }}>ICE: </span>
-                  <span style={{ color: jr.ice === 0 ? P.danger : P.text, fontWeight: jr.ice === 0 ? 600 : 400 }}>{jr.ice === 0 ? "$0" : fmt(jr.ice)}</span>
-                </div>
-                <div style={{ fontSize: 11, marginBottom: 2 }}>
-                  <span style={{ color: P.textLight }}>USMS: </span>
-                  <span style={{ color: jr.usMarshall === 0 ? P.danger : P.text }}>{jr.usMarshall === 0 ? "$0" : fmt(jr.usMarshall)}</span>
-                </div>
-                <div style={{ fontSize: 11, marginBottom: 2 }}>
-                  <span style={{ color: P.textLight }}>DOC: </span>
-                  <span style={{ color: P.text }}>{jr.stateDOC ? fmt(jr.stateDOC) : "\u2014"}</span>
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: P.red, borderTop: `1px solid ${P.border}`, paddingTop: 4, marginTop: 4 }}>
-                  {fmt(jr.total)}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div style={{ marginTop: 12, fontSize: 12, color: P.textMed, lineHeight: 1.5 }}>
-          FY 26-27 projects <strong style={{ color: P.red }}>$0 in ICE and US Marshal revenue</strong>. In CY 2022, federal boarding brought in $2.7M. That revenue is gone, shifting costs directly to property taxpayers.
-        </div>
-      </div>
-    </div>
+function RevenueTab(){
+  const jailRevData=ALL_YEARS.map(yr=>({name:yrShort(yr),Total:JAIL_REV[yr]?.total||0}));
+  const fyYears=["FY 23-24","FY 24-25","FY 25-26","FY 26-27"];
+  return h("div",null,
+    h("h3",{style:{fontSize:15,color:P.text,fontFamily:sf,marginBottom:14}},"Jail Revenue Over Time"),
+    h("div",{style:{padding:"18px 20px",background:P.red+"08",border:"1px solid "+P.red+"20",borderRadius:12}},
+      h(ResponsiveContainer,{width:"100%",height:220},h(BarChart,{data:jailRevData},h(CartesianGrid,{strokeDasharray:"3 3",stroke:P.borderLight}),h(XAxis,{dataKey:"name",tick:{fill:P.textMuted,fontSize:10},axisLine:{stroke:P.border}}),h(YAxis,{tick:{fill:P.textMuted,fontSize:10},axisLine:false,tickFormatter:v=>"$"+(v/1e6).toFixed(1)+"M"}),h(Tooltip,{content:h(Tip)}),h(Bar,{dataKey:"Total",fill:P.red,radius:[4,4,0,0]}))),
+      h("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8,marginTop:14}},fyYears.map(yr=>{const jr=JAIL_REV[yr];return h("div",{key:yr,style:{background:P.white,borderRadius:8,padding:"10px 12px",border:"1px solid "+P.border}},h("div",{style:{fontSize:10,color:P.textMuted,marginBottom:6}},yr),h("div",{style:{fontSize:11,marginBottom:2}},h("span",{style:{color:P.textLight}},"ICE: "),h("span",{style:{color:jr.ice===0?P.danger:P.text,fontWeight:jr.ice===0?600:400}},jr.ice===0?"$0":fmt(jr.ice))),h("div",{style:{fontSize:11,marginBottom:2}},h("span",{style:{color:P.textLight}},"USMS: "),h("span",{style:{color:jr.usMarshall===0?P.danger:P.text}},jr.usMarshall===0?"$0":fmt(jr.usMarshall))),h("div",{style:{fontSize:11,marginBottom:2}},h("span",{style:{color:P.textLight}},"DOC: "),h("span",{style:{color:P.text}},jr.stateDOC?fmt(jr.stateDOC):"\u2014")),h("div",{style:{fontSize:12,fontWeight:600,color:P.red,borderTop:"1px solid "+P.border,paddingTop:4,marginTop:4}},fmt(jr.total)))})),
+      h("div",{style:{marginTop:12,fontSize:12,color:P.textMed,lineHeight:1.5}},"FY 26-27 projects ",h("strong",{style:{color:P.red}},"$0 in ICE and US Marshal revenue"),". In CY 2022, federal boarding brought in $2.7M. That revenue is gone, shifting costs directly to property taxpayers.")
+    )
   );
 }
 
-// ── TAB 5: JAIL SPOTLIGHT ──
-function JailSpotlight() {
-  const jailBudData = FISCAL_YEARS.map(yr => ({
-    name: yr, Personnel: JAIL[yr].personnel, Operations: JAIL[yr].operations, Capital: JAIL[yr].capital,
-  }));
-  const keyItems = [
-    { name: "Inmate Medical Contract", value: 4417850, pct: 17.4, note: "Largest single line item" },
-    { name: "Personnel (Wages)", value: 12051512, pct: 47.4, note: "95 COs, 16 Sgts, 7 Lts, etc." },
-    { name: "Overtime", value: 1674349, pct: 6.6, note: "Vacations, sick, coverage" },
-    { name: "Employee Benefits", value: 5533018, pct: 21.7, note: "Health, retirement, SS" },
-    { name: "Food & Kitchen", value: 1010000, pct: 4.0, note: "425+ inmates, 3 meals/day" },
-    { name: "Utilities", value: 623000, pct: 2.4, note: "Electric, gas, water, sewer" },
-    { name: "Pre-Trial Services", value: 381981, pct: 1.5, note: "Maine Pre-Trial contract" },
-  ];
+function JailSpotlight(){
+  const jailBudData=FISCAL_YEARS.map(yr=>({name:yr,Personnel:JAIL[yr].personnel,Operations:JAIL[yr].operations,Capital:JAIL[yr].capital}));
+  const stats=[{label:"FY 26-27 Jail Budget",value:"$25.4M",sub:"Manager's recommendation"},{label:"Tax Increase from Jail",value:"+10.04%",sub:"$4.2M additional tax burden",color:P.danger},{label:"Lost Federal Revenue",value:"$1.8M",sub:"ICE + US Marshal = $0",color:P.danger},{label:"Jail Share of Budget",value:"42.3%",sub:"Largest single cost center"}];
+  const keyItems=[{name:"Inmate Medical Contract",value:4417850,pct:17.4,note:"Largest single line item"},{name:"Personnel (Wages)",value:12051512,pct:47.4,note:"95 COs, 16 Sgts, 7 Lts, etc."},{name:"Overtime",value:1674349,pct:6.6,note:"Vacations, sick, coverage"},{name:"Employee Benefits",value:5533018,pct:21.7,note:"Health, retirement, SS"},{name:"Food & Kitchen",value:1010000,pct:4.0,note:"425+ inmates, 3 meals/day"},{name:"Utilities",value:623000,pct:2.4,note:"Electric, gas, water, sewer"},{name:"Pre-Trial Services",value:381981,pct:1.5,note:"Maine Pre-Trial contract"}];
+  const taxItems=[{label:"County Government",...TAX_IMPACT.countyImpact,color:P.county},{label:"County Jail",...TAX_IMPACT.jailImpact,color:P.jail},{label:"Cross Insurance Arena",...TAX_IMPACT.arenaImpact,color:P.arena}];
 
-  return (
-    <div>
-      <div style={{ background: `${P.red}08`, border: `1px solid ${P.red}20`, borderRadius: 14, padding: "22px 24px", marginBottom: 24 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16 }}>
-          {[
-            { label: "FY 26-27 Jail Budget", value: "$25.4M", sub: "Manager's recommendation" },
-            { label: "Tax Increase from Jail", value: "+10.04%", sub: "$4.2M additional tax burden", color: P.danger },
-            { label: "Lost Federal Revenue", value: "$1.8M", sub: "ICE + US Marshal = $0", color: P.danger },
-            { label: "Jail Share of Budget", value: "42.3%", sub: "Largest single cost center" },
-          ].map((s, i) => (
-            <div key={i} style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: P.textMuted, marginBottom: 4 }}>{s.label}</div>
-              <div style={{ fontSize: 26, fontWeight: 700, color: s.color || P.red, fontFamily: "'Source Serif 4', Georgia, serif" }}>{s.value}</div>
-              <div style={{ fontSize: 11, color: P.textLight }}>{s.sub}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 24 }}>
-        <div>
-          <h3 style={{ fontSize: 15, color: P.text, fontFamily: "'Source Serif 4', Georgia, serif", marginBottom: 12 }}>Jail Spending by Type</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={jailBudData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={P.borderLight} />
-              <XAxis dataKey="name" tick={{ fill: P.textMuted, fontSize: 11 }} axisLine={{ stroke: P.border }} />
-              <YAxis tick={{ fill: P.textMuted, fontSize: 10 }} axisLine={false} tickFormatter={v => `$${(v / 1e6).toFixed(0)}M`} />
-              <Tooltip content={<Tip />} />
-              <Bar dataKey="Personnel" stackId="a" fill={P.jail} />
-              <Bar dataKey="Operations" stackId="a" fill={P.arena} />
-              <Bar dataKey="Capital" stackId="a" fill={P.textLight} radius={[4, 4, 0, 0]} />
-              <Legend wrapperStyle={{ fontSize: 11, color: P.textMuted }} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div>
-          <h3 style={{ fontSize: 15, color: P.text, fontFamily: "'Source Serif 4', Georgia, serif", marginBottom: 12 }}>FY 26-27 Tax Impact Breakdown</h3>
-          {[
-            { label: "County Government", ...TAX_IMPACT.countyImpact, color: P.county },
-            { label: "County Jail", ...TAX_IMPACT.jailImpact, color: P.jail },
-            { label: "Cross Insurance Arena", ...TAX_IMPACT.arenaImpact, color: P.arena },
-          ].map((item, i) => (
-            <div key={i} style={{ background: P.white, border: `1px solid ${P.border}`, borderRadius: 10, padding: "12px 16px", marginBottom: 10 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: 13, color: P.text }}>{item.label}</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: item.percent > 0 ? P.danger : P.success }}>{fmtPct(item.percent)}</span>
-              </div>
-              <div style={{ height: 6, background: P.cream, borderRadius: 3, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${Math.abs(item.percent) / TAX_IMPACT.totalIncrease.percent * 100}%`, background: item.color, borderRadius: 3, transition: "width 0.8s ease" }} />
-              </div>
-              <div style={{ fontSize: 11, color: P.textMuted, marginTop: 4 }}>{item.dollars > 0 ? "+" : ""}{fmtFull(item.dollars)}</div>
-            </div>
-          ))}
-          <div style={{ background: `${P.red}0A`, border: `1px solid ${P.red}25`, borderRadius: 10, padding: "12px 16px", marginTop: 4 }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: P.red }}>Total Tax Increase</span>
-              <span style={{ fontSize: 14, fontWeight: 700, color: P.danger }}>+13.77%</span>
-            </div>
-            <div style={{ fontSize: 12, color: P.textMuted, marginTop: 2 }}>+$5,800,164 over FY 25-26</div>
-          </div>
-        </div>
-      </div>
-
-      <h3 style={{ fontSize: 15, color: P.text, fontFamily: "'Source Serif 4', Georgia, serif", marginBottom: 12 }}>Largest Jail Expenditures (FY 26-27)</h3>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10, marginBottom: 24 }}>
-        {keyItems.map((item, i) => (
-          <div key={i} style={{ background: P.white, border: `1px solid ${P.border}`, borderRadius: 10, padding: "12px 14px" }}>
-            <div style={{ fontSize: 12, color: P.textMuted, marginBottom: 4 }}>{item.name}</div>
-            <div style={{ fontSize: 18, fontWeight: 600, color: P.red, fontFamily: "'Source Serif 4', Georgia, serif" }}>{fmt(item.value)}</div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
-              <span style={{ fontSize: 10, color: P.textLight }}>{item.note}</span>
-              <span style={{ fontSize: 10, color: P.red }}>{item.pct}%</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ padding: "18px 22px", background: P.white, border: `1px solid ${P.border}`, borderRadius: 14, borderLeft: `4px solid ${P.red}` }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: P.red, marginBottom: 8, fontFamily: "'Source Serif 4', Georgia, serif" }}>What This Means for Cumberland County Taxpayers</div>
-        <div style={{ fontSize: 13, color: P.text, lineHeight: 1.7 }}>
-          The jail is the single largest driver of property tax increases. Of the proposed 13.77% tax increase, <strong style={{ color: P.red }}>the jail alone accounts for 10.04 percentage points</strong> \u2014 nearly three-quarters of the total increase. Meanwhile, federal detention revenue from ICE and US Marshal contracts drops to zero, creating a $1.8 million hole that falls directly on local taxpayers.
-        </div>
-        <div style={{ fontSize: 13, color: P.text, lineHeight: 1.7, marginTop: 10 }}>
-          At $25.4 million, the jail consumes more than all other county departments combined. The inmate medical contract alone ($4.4M) exceeds the entire budgets of Emergency Management, Public Health, Registry of Deeds, and Registry of Probate \u2014 combined. Since CY 2020, the total county budget has grown 29% from $46.6M to $60.2M, with jail costs driving much of that increase.
-        </div>
-      </div>
-    </div>
+  return h("div",null,
+    h("div",{style:{background:P.red+"08",border:"1px solid "+P.red+"20",borderRadius:14,padding:"22px 24px",marginBottom:24}},h("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:16}},stats.map((s,i)=>h("div",{key:i,style:{textAlign:"center"}},h("div",{style:{fontSize:10,textTransform:"uppercase",letterSpacing:1.5,color:P.textMuted,marginBottom:4}},s.label),h("div",{style:{fontSize:26,fontWeight:700,color:s.color||P.red,fontFamily:sf}},s.value),h("div",{style:{fontSize:11,color:P.textLight}},s.sub))))),
+    h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24,marginBottom:24}},
+      h("div",null,h("h3",{style:{fontSize:15,color:P.text,fontFamily:sf,marginBottom:12}},"Jail Spending by Type"),h(ResponsiveContainer,{width:"100%",height:260},h(BarChart,{data:jailBudData},h(CartesianGrid,{strokeDasharray:"3 3",stroke:P.borderLight}),h(XAxis,{dataKey:"name",tick:{fill:P.textMuted,fontSize:11},axisLine:{stroke:P.border}}),h(YAxis,{tick:{fill:P.textMuted,fontSize:10},axisLine:false,tickFormatter:v=>"$"+(v/1e6).toFixed(0)+"M"}),h(Tooltip,{content:h(Tip)}),h(Bar,{dataKey:"Personnel",stackId:"a",fill:P.jail}),h(Bar,{dataKey:"Operations",stackId:"a",fill:P.arena}),h(Bar,{dataKey:"Capital",stackId:"a",fill:P.textLight,radius:[4,4,0,0]}),h(Legend,{wrapperStyle:{fontSize:11,color:P.textMuted}})))),
+      h("div",null,h("h3",{style:{fontSize:15,color:P.text,fontFamily:sf,marginBottom:12}},"FY 26-27 Tax Impact Breakdown"),
+        taxItems.map((item,i)=>h("div",{key:i,style:{background:P.white,border:"1px solid "+P.border,borderRadius:10,padding:"12px 16px",marginBottom:10}},h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}},h("span",{style:{fontSize:13,color:P.text}},item.label),h("span",{style:{fontSize:13,fontWeight:600,color:item.percent>0?P.danger:P.success}},fmtPct(item.percent))),h("div",{style:{height:6,background:P.cream,borderRadius:3,overflow:"hidden"}},h("div",{style:{height:"100%",width:Math.abs(item.percent)/TAX_IMPACT.totalIncrease.percent*100+"%",background:item.color,borderRadius:3,transition:"width 0.8s ease"}})),h("div",{style:{fontSize:11,color:P.textMuted,marginTop:4}},(item.dollars>0?"+":"")+fmtFull(item.dollars)))),
+        h("div",{style:{background:P.red+"0A",border:"1px solid "+P.red+"25",borderRadius:10,padding:"12px 16px",marginTop:4}},h("div",{style:{display:"flex",justifyContent:"space-between"}},h("span",{style:{fontSize:14,fontWeight:600,color:P.red}},"Total Tax Increase"),h("span",{style:{fontSize:14,fontWeight:700,color:P.danger}},"+13.77%")),h("div",{style:{fontSize:12,color:P.textMuted,marginTop:2}},"+$5,800,164 over FY 25-26"))
+      )
+    ),
+    h("h3",{style:{fontSize:15,color:P.text,fontFamily:sf,marginBottom:12}},"Largest Jail Expenditures (FY 26-27)"),
+    h("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10,marginBottom:24}},keyItems.map((item,i)=>h("div",{key:i,style:{background:P.white,border:"1px solid "+P.border,borderRadius:10,padding:"12px 14px"}},h("div",{style:{fontSize:12,color:P.textMuted,marginBottom:4}},item.name),h("div",{style:{fontSize:18,fontWeight:600,color:P.red,fontFamily:sf}},fmt(item.value)),h("div",{style:{display:"flex",justifyContent:"space-between",marginTop:4}},h("span",{style:{fontSize:10,color:P.textLight}},item.note),h("span",{style:{fontSize:10,color:P.red}},item.pct+"%"))))),
+    h("div",{style:{padding:"18px 22px",background:P.white,border:"1px solid "+P.border,borderRadius:14,borderLeft:"4px solid "+P.red}},
+      h("div",{style:{fontSize:14,fontWeight:600,color:P.red,marginBottom:8,fontFamily:sf}},"What This Means for Cumberland County Taxpayers"),
+      h("div",{style:{fontSize:13,color:P.text,lineHeight:1.7}},"The jail is the single largest driver of property tax increases. Of the proposed 13.77% tax increase, ",h("strong",{style:{color:P.red}},"the jail alone accounts for 10.04 percentage points")," \u2014 nearly three-quarters of the total increase. Meanwhile, federal detention revenue from ICE and US Marshal contracts drops to zero, creating a $1.8 million hole that falls directly on local taxpayers."),
+      h("div",{style:{fontSize:13,color:P.text,lineHeight:1.7,marginTop:10}},"At $25.4 million, the jail consumes more than all other county departments combined. The inmate medical contract alone ($4.4M) exceeds the entire budgets of Emergency Management, Public Health, Registry of Deeds, and Registry of Probate \u2014 combined.")
+    )
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// MAIN
-// ═══════════════════════════════════════════════════════════════════════
+const TABS=[{id:"breakdown",label:"Budget Breakdown"},{id:"comparison",label:"Year-over-Year"},{id:"trends",label:"Multi-Year Trends"},{id:"revenue",label:"Revenue Sources"},{id:"jail",label:"Jail Spotlight"}];
 
-const TABS = [
-  { id: "breakdown", label: "Budget Breakdown" },
-  { id: "comparison", label: "Year-over-Year" },
-  { id: "trends", label: "Multi-Year Trends" },
-  { id: "revenue", label: "Revenue Sources" },
-  { id: "jail", label: "Jail Spotlight" },
-];
-
-export default function BudgetExplorer() {
-  const [tab, setTab] = useState("breakdown");
-  const [year, setYear] = useState("FY 26-27");
-
-  return (
-    <div style={{
-      minHeight: "100vh",
-      background: P.cream,
-      color: P.text, fontFamily: "'Libre Franklin', 'Helvetica Neue', sans-serif", position: "relative",
-    }}>
-      <div style={{ position: "relative", zIndex: 1, maxWidth: 1080, margin: "0 auto", padding: "32px 24px" }}>
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 3, color: P.redDark, marginBottom: 8, fontWeight: 600 }}>Cumberland County, Maine</div>
-          <h1 style={{ fontSize: 34, fontWeight: 700, color: P.red, fontFamily: "'Source Serif 4', Georgia, serif", margin: 0, lineHeight: 1.2 }}>
-            Interactive Budget Explorer
-          </h1>
-          <p style={{ fontSize: 14, color: P.textMuted, marginTop: 8, maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
-            Calendar Years 2020\u20132022 & Fiscal Years 2023\u20132027 \u00B7 Official County Budget Documents
-          </p>
-        </div>
-
-        {/* Year selector */}
-        {tab === "breakdown" && (
-          <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 24, flexWrap: "wrap" }}>
-            {ALL_YEARS.map(yr => (
-              <button key={yr} onClick={() => setYear(yr)}
-                style={{
-                  padding: "6px 14px", borderRadius: 20,
-                  border: year === yr ? `2px solid ${P.red}` : `1px solid ${P.border}`,
-                  background: year === yr ? P.red : P.white,
-                  color: year === yr ? P.white : P.textMed,
-                  cursor: "pointer", fontSize: 11, fontWeight: year === yr ? 600 : 400,
-                  transition: "all 0.2s", fontFamily: "'Libre Franklin', sans-serif",
-                }}>
-                {yr}{yr === "FY 26-27" ? " (Proposed)" : ""}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Tab nav */}
-        <div style={{ display: "flex", gap: 4, marginBottom: 24, overflowX: "auto", paddingBottom: 2 }}>
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              style={{
-                padding: "10px 20px", borderRadius: 8, border: "none",
-                background: tab === t.id ? P.red : "transparent",
-                color: tab === t.id ? P.white : P.textMed,
-                cursor: "pointer", fontSize: 13, fontWeight: tab === t.id ? 600 : 400,
-                transition: "all 0.2s", whiteSpace: "nowrap", fontFamily: "'Libre Franklin', sans-serif",
-              }}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Content */}
-        <div style={{
-          background: P.white,
-          border: `1px solid ${P.border}`, borderRadius: 16, padding: "28px 28px",
-          boxShadow: "0 4px 20px rgba(45,41,38,0.06)",
-        }}>
-          {tab === "breakdown" && <BreakdownTab year={year} />}
-          {tab === "comparison" && <ComparisonTab />}
-          {tab === "trends" && <TrendsTab />}
-          {tab === "revenue" && <RevenueTab />}
-          {tab === "jail" && <JailSpotlight />}
-        </div>
-
-        {/* Footer */}
-        <div style={{ textAlign: "center", marginTop: 28, paddingTop: 20, borderTop: `1px solid ${P.border}` }}>
-          <div style={{ fontSize: 11, color: P.textLight, lineHeight: 1.6, maxWidth: 720, margin: "0 auto" }}>
-            Data sourced from official Cumberland County budget documents: CY 2020-2022 Annual Budgets and FY 2023-24 through FY 2026-27 Budget Books.
-            The county transitioned from calendar year to fiscal year (July-June) budgeting in 2023, with a 6-month transition period omitted above.
-            FY 26-27 figures reflect the County Manager's Recommendation \u2014 the Finance Committee and Commissioners have not yet voted on a final budget.
-          </div>
-        </div>
-      </div>
-    </div>
+function App(){
+  const[tab,setTab]=useState("breakdown");const[year,setYear]=useState("FY 26-27");
+  return h("div",{style:{minHeight:"100vh",background:P.cream,color:P.text,fontFamily:sn}},
+    h("div",{style:{maxWidth:1080,margin:"0 auto",padding:"32px 24px"}},
+      h("div",{style:{textAlign:"center",marginBottom:32}},h("div",{style:{fontSize:11,textTransform:"uppercase",letterSpacing:3,color:P.redDark,marginBottom:8,fontWeight:600}},"Cumberland County, Maine"),h("h1",{style:{fontSize:34,fontWeight:700,color:P.red,fontFamily:sf,margin:0,lineHeight:1.2}},"Interactive Budget Explorer"),h("p",{style:{fontSize:14,color:P.textMuted,marginTop:8,maxWidth:640,marginLeft:"auto",marginRight:"auto"}},"Calendar Years 2020\u20132022 & Fiscal Years 2023\u20132027 \u00B7 Official County Budget Documents")),
+      tab==="breakdown"?h("div",{style:{display:"flex",justifyContent:"center",gap:6,marginBottom:24,flexWrap:"wrap"}},ALL_YEARS.map(yr=>h("button",{key:yr,onClick:()=>setYear(yr),style:{padding:"6px 14px",borderRadius:20,border:year===yr?"2px solid "+P.red:"1px solid "+P.border,background:year===yr?P.red:P.white,color:year===yr?P.white:P.textMed,cursor:"pointer",fontSize:11,fontWeight:year===yr?600:400,transition:"all 0.2s",fontFamily:sn}},yr+(yr==="FY 26-27"?" (Proposed)":"")))):null,
+      h("div",{style:{display:"flex",gap:4,marginBottom:24,overflowX:"auto",paddingBottom:2}},TABS.map(t=>h("button",{key:t.id,onClick:()=>setTab(t.id),style:{padding:"10px 20px",borderRadius:8,border:"none",background:tab===t.id?P.red:"transparent",color:tab===t.id?P.white:P.textMed,cursor:"pointer",fontSize:13,fontWeight:tab===t.id?600:400,transition:"all 0.2s",whiteSpace:"nowrap",fontFamily:sn}},t.label))),
+      h("div",{style:{background:P.white,border:"1px solid "+P.border,borderRadius:16,padding:"28px",boxShadow:"0 4px 20px rgba(45,41,38,0.06)"}},
+        tab==="breakdown"?h(BreakdownTab,{year}):null,tab==="comparison"?h(ComparisonTab):null,tab==="trends"?h(TrendsTab):null,tab==="revenue"?h(RevenueTab):null,tab==="jail"?h(JailSpotlight):null
+      ),
+      h("div",{style:{textAlign:"center",marginTop:28,paddingTop:20,borderTop:"1px solid "+P.border}},h("div",{style:{fontSize:11,color:P.textLight,lineHeight:1.6,maxWidth:720,margin:"0 auto"}},"Data sourced from official Cumberland County budget documents: CY 2020-2022 Annual Budgets and FY 2023-24 through FY 2026-27 Budget Books. The county transitioned from calendar year to fiscal year (July-June) budgeting in 2023. FY 26-27 figures reflect the County Manager\u2019s Recommendation."))
+    )
   );
 }
+
+createRoot(document.getElementById("root")).render(h(App));
+</script>
+</body>
+</html>
